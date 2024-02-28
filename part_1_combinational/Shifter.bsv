@@ -13,6 +13,19 @@ endfunction
 
 
 function Vector#(16, Word) barrelLeft(Vector#(16, Word) in, Bit#(4) shftAmnt);
-    return unpack(0);
-    // Implementation of a left barrel shifter
+    Vector#(16, Word) intermediate[5];
+    intermediate[0] = in;
+
+    for (Integer i = 0; i < 4; i = i + 1) begin
+        // Vector vs array?
+
+        if (shftAmnt[3 - i] == 0) begin
+            intermediate[i + 1] = intermediate[i];
+        end
+        else begin
+            intermediate[i + 1] = naiveShfl(intermediate[i], (8 >> i));
+        end
+    end
+
+    return intermediate[4];
 endfunction

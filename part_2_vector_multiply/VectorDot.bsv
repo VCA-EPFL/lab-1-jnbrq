@@ -37,12 +37,14 @@ module mkVectorDot (VD);
 
 
     rule process_a (ready_start && !done_a && !req_a_ready);
+        $display("process_a: pos_a = %d", pos_a);
+
         a.portA.request.put(BRAMRequest{write: False, // False for read
                             responseOnWrite: False,
                             address: zeroExtend(pos_a),
                             datain: ?});
 
-        if (pos_a < dim*zeroExtend(i))
+        if (pos_a < dim*zeroExtend(i + 1)) // BUG 1
             pos_a <= pos_a + 1;
         else done_a <= True;
 
@@ -51,27 +53,33 @@ module mkVectorDot (VD);
     endrule
 
     rule process_b (ready_start && !done_b && !req_b_ready);
+        $display("process_b: pos_b = %d", pos_b);
+
         b.portA.request.put(BRAMRequest{write: False, // False for read
                 responseOnWrite: False,
                 address: zeroExtend(pos_b),
                 datain: ?});
 
-        if (pos_b < dim*zeroExtend(i))
+        if (pos_b < dim*zeroExtend(i + 1)) // BUG 2
             pos_b <= pos_b + 1;
         else done_b <= True;
     
         req_b_ready <= True;
     endrule
 
-    rule mult_inputs (req_a_ready && req_b_ready && !done_all);
+    // Fixed compiler warning: ready_start
+    rule mult_inputs (ready_start && req_a_ready && req_b_ready && !done_all);
         let out_a <- a.portA.response.get();
         let out_b <- b.portA.response.get();
 
-        output_res <=  out_a*out_b;     
+        output_res <= output_res + out_a*out_b; // BUG 3
         pos_out <= pos_out + 1;
         
         if (pos_out == dim-1) begin
             done_all <= True;
+
+            // BUG 4
+            ready_start <= False;
         end
 
 
@@ -85,12 +93,13 @@ module mkVectorDot (VD);
         ready_start <= True;
         dim <= dim_in;
         done_all <= False;
-        pos_a <= dim_in*zeroExtend(i);
-        pos_b <= dim_in*zeroExtend(i);
+        pos_a <= dim_in*zeroExtend(i_in); // BUG 6
+        pos_b <= dim_in*zeroExtend(i_in); // BUG 7
         done_a <= False;
         done_b <= False;
         pos_out <= 0;
         i <= i_in;
+        output_res <= 0; // BUG 5
     endmethod
 
     method ActionValue#(Bit#(32)) response() if (done_all);
@@ -98,5 +107,3 @@ module mkVectorDot (VD);
     endmethod
 
 endmodule
-
-
