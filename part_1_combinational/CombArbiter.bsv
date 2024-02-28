@@ -29,3 +29,4 @@ endfunction
 
 // NOTE: Atomicity of the rules, if a method calls multiple methods, it is executed when all methods
 // are in fact executable.
+
