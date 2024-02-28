@@ -35,16 +35,19 @@ module mkVectorDot (VD);
 
     Reg#(Bit#(2)) i <- mkReg(0);
 
-
     rule process_a (ready_start && !done_a && !req_a_ready);
-        $display("process_a: pos_a = %d", pos_a);
+        // $display("process_a: pos_a = %d", pos_a);
 
         a.portA.request.put(BRAMRequest{write: False, // False for read
                             responseOnWrite: False,
                             address: zeroExtend(pos_a),
                             datain: ?});
 
-        if (pos_a < dim*zeroExtend(i + 1)) // BUG 1
+        Bit#(32) dim_ = zeroExtend(dim);
+        Bit#(32) i_ = zeroExtend(i);
+        Bit#(32) pos_ = zeroExtend(pos_a);
+
+        if (pos_ < dim_*(i_ + 1)) // BUG 1
             pos_a <= pos_a + 1;
         else done_a <= True;
 
@@ -53,14 +56,18 @@ module mkVectorDot (VD);
     endrule
 
     rule process_b (ready_start && !done_b && !req_b_ready);
-        $display("process_b: pos_b = %d", pos_b);
+        // $display("process_b: pos_b = %d, expr = %d", pos_b, dim*zeroExtend(i + 1));
 
         b.portA.request.put(BRAMRequest{write: False, // False for read
                 responseOnWrite: False,
                 address: zeroExtend(pos_b),
                 datain: ?});
 
-        if (pos_b < dim*zeroExtend(i + 1)) // BUG 2
+        Bit#(32) dim_ = zeroExtend(dim);
+        Bit#(32) i_ = zeroExtend(i);
+        Bit#(32) pos_ = zeroExtend(pos_b);
+
+        if (pos_ < dim_*(i_ + 1)) // BUG 2
             pos_b <= pos_b + 1;
         else done_b <= True;
     
@@ -72,6 +79,8 @@ module mkVectorDot (VD);
         let out_a <- a.portA.response.get();
         let out_b <- b.portA.response.get();
 
+        // $display("mult_inputs: out_a = %d, out_b = %d, pos_out = %d, dim = %d", out_a, out_b, pos_out, dim);
+
         output_res <= output_res + out_a*out_b; // BUG 3
         pos_out <= pos_out + 1;
         
@@ -82,12 +91,9 @@ module mkVectorDot (VD);
             ready_start <= False;
         end
 
-
         req_a_ready <= False;
         req_b_ready <= False;
     endrule
-
-
 
     method Action start(Bit#(8) dim_in, Bit#(2) i_in) if (!ready_start);
         ready_start <= True;
