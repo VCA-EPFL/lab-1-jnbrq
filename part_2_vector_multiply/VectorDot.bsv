@@ -47,7 +47,7 @@ module mkVectorDot (VD);
         Bit#(32) i_ = zeroExtend(i);
         Bit#(32) pos_ = zeroExtend(pos_a);
 
-        if (pos_ < dim_*(i_ + 1)) // BUG 1
+        if (pos_ < dim_*(i_ + 1)) // BUG 1, overflow, wrong condition
             pos_a <= pos_a + 1;
         else done_a <= True;
 
@@ -67,21 +67,21 @@ module mkVectorDot (VD);
         Bit#(32) i_ = zeroExtend(i);
         Bit#(32) pos_ = zeroExtend(pos_b);
 
-        if (pos_ < dim_*(i_ + 1)) // BUG 2
+        if (pos_ < dim_*(i_ + 1)) // BUG 2, overflow, wrong condition
             pos_b <= pos_b + 1;
         else done_b <= True;
     
         req_b_ready <= True;
     endrule
 
-    // Fixed compiler warning: ready_start
+    // (MAYBE BUG) Fixed compiler warning: ready_start
     rule mult_inputs (ready_start && req_a_ready && req_b_ready && !done_all);
         let out_a <- a.portA.response.get();
         let out_b <- b.portA.response.get();
 
         // $display("mult_inputs: out_a = %d, out_b = %d, pos_out = %d, dim = %d", out_a, out_b, pos_out, dim);
 
-        output_res <= output_res + out_a*out_b; // BUG 3
+        output_res <= output_res + out_a*out_b; // BUG 3, no accumulation
         pos_out <= pos_out + 1;
         
         if (pos_out == dim-1) begin
@@ -99,13 +99,13 @@ module mkVectorDot (VD);
         ready_start <= True;
         dim <= dim_in;
         done_all <= False;
-        pos_a <= dim_in*zeroExtend(i_in); // BUG 6
-        pos_b <= dim_in*zeroExtend(i_in); // BUG 7
+        pos_a <= dim_in*zeroExtend(i_in); // BUG 6, init with wrong value
+        pos_b <= dim_in*zeroExtend(i_in); // BUG 7, same
         done_a <= False;
         done_b <= False;
         pos_out <= 0;
         i <= i_in;
-        output_res <= 0; // BUG 5
+        output_res <= 0; // BUG 5, must reset when first started
     endmethod
 
     method ActionValue#(Bit#(32)) response() if (done_all);
